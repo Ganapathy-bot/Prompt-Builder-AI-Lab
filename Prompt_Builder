@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Prompt Builder AI Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --accent: #58a6ff;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --success: #2ea043;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Layout */
+.container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    grid-template-columns: 1.1fr 0.9fr;
+    height: 100vh;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 0 0 1px #30363d;
+  overflow: auto;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+/* Inputs */
+label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+textarea, input {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+textarea:focus, input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Buttons */
+button {
+  background: var(--accent);
+  color: black;
+  border: none;
+  padding: 10px 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* Chips */
+.chips span {
+  display: inline-block;
+  background: #21262d;
+  padding: 6px 10px;
+  border-radius: 20px;
+  margin: 4px 4px 0 0;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.chips span:hover {
+  background: var(--accent);
+  color: black;
+}
+
+/* Output */
+pre {
+  background: #0d1117;
+  padding: 14px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  border: 1px solid #30363d;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #21262d;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  margin-bottom: 8px;
+  color: var(--success);
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <h1>Prompt Builder AI Lab</h1>
+  <div class="subtitle">Human-in-the-loop prompt engineering with RAG assistance</div>
+
+  <label>OpenRouter API Key</label>
+  <input id="apiKey" type="password" placeholder="sk-or-xxxxxxxx" />
+
+  <label>What do you want the AI to do?</label>
+  <textarea id="task" rows="3" placeholder="Explain QTL mapping for MSc biotechnology students"></textarea>
+
+  <div class="chips">
+    <span onclick="autoFill('biotechnology')">🌱 Biotechnology</span>
+    <span onclick="autoFill('ai')">🤖 AI Systems</span>
+  </div>
+
+  <label>Role</label>
+  <input id="role" placeholder="Plant Biotechnology Tutor">
+
+  <label>Domain</label>
+  <input id="domain" placeholder="QTL mapping, molecular markers">
+
+  <label>Context</label>
+  <input id="context" placeholder="MSc students with genetics background">
+
+  <label>Constraints</label>
+  <textarea id="constraints" rows="2"></textarea>
+
+  <label>Output Format</label>
+  <input id="format" placeholder="Structured explanation with headings">
+
+  <label>Success Criteria</label>
+  <input id="success" placeholder="Conceptual clarity and exam readiness">
+
+  <button onclick="runAgent()">Build & Run</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel">
+  <div class="badge" id="strategyBadge">Strategy: —</div>
+
+  <h3>Generated Prompt</h3>
+  <pre id="promptPreview">—</pre>
+
+  <h3>LLM Output</h3>
+  <pre id="output">—</pre>
+</div>
+
+</div>
+
+<script>
+const KB = {
+  biotechnology: {
+    role: "Plant Biotechnology Tutor",
+    domain: "Molecular markers, QTL mapping, plant genomics",
+    constraints: "- Scientific accuracy required\n- Exam-oriented\n- No oversimplification",
+    format: "Structured explanation with headings and diagrams",
+    success: "Conceptual clarity and exam readiness"
+  },
+  ai: {
+    role: "AI Systems Architect",
+    domain: "LLM agents, RAG pipelines, orchestration frameworks",
+    constraints: "- Production-grade logic\n- Modular design\n- Avoid speculation",
+    format: "Step-by-step architecture with code snippets",
+    success: "Reusable and scalable design"
+  }
+};
+
+function autoFill(key) {
+  const k = KB[key];
+  role.value ||= k.role;
+  domain.value ||= k.domain;
+  constraints.value ||= k.constraints;
+  format.value ||= k.format;
+  success.value ||= k.success;
+}
+
+function selectStrategy(task) {
+  return task.split(" ").length > 25 ? "Chain-of-Thought" : "Zero-shot";
+}
+
+function buildPrompt(s, strategy) {
+  return `
+You are an expert ${s.role} with deep expertise in ${s.domain}.
+
+Task:
+${s.task}
+
+Context:
+${s.context}
+
+Constraints:
+${s.constraints}
+
+Output Format:
+${s.format}
+
+Success Criteria:
+${s.success}
+
+Use ${strategy} reasoning internally. Provide only the final answer.
+`.trim();
+}
+
+async function runAgent() {
+  const s = {
+    apiKey: apiKey.value,
+    task: task.value,
+    role: role.value,
+    domain: domain.value,
+    context: context.value,
+    constraints: constraints.value,
+    format: format.value,
+    success: success.value
+  };
+
+  if (!s.apiKey || !s.task) {
+    alert("API key and task are required.");
+    return;
+  }
+
+  const strategy = selectStrategy(s.task);
+  strategyBadge.textContent = `Strategy: ${strategy}`;
+
+  const prompt = buildPrompt(s, strategy);
+  promptPreview.textContent = prompt;
+  output.textContent = "⏳ Generating…";
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${s.apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "http://localhost",
+      "X-Title": "Prompt Builder AI Lab"
+    },
+    body: JSON.stringify({
+      model: "tngtech/deepseek-r1t2-chimera:free",
+      messages: [
+        { role: "system", content: "You are a precise AI assistant." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.2
+    })
+  });
+
+  const data = await res.json();
+  output.textContent = data.choices?.[0]?.message?.content || "Error generating output";
+}
+</script>
+
+</body>
+</html>
